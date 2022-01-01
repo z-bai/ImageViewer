@@ -1,51 +1,62 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './index.less';
 import * as images from './img';
 import useWindowSize from "../Hooks/useWindowSize";
+import useForceUpdate from "use-force-update";
 
+const html = document.documentElement;
 function ImageViewer() {
     const {windowWidth, windowHeight} = useWindowSize();
+    const forceUpdate = useForceUpdate();
     const x = useRef(0);
-    const diffX = useRef(0);
-    const [diffsLatest, setDiffsLatest] = useState({});
-    const diffsWhenPointerDown = useRef({});
+    const offsetXRef = useRef(0);
+    const [animEnabled, setAnimEnabled] = useState(false);
 
     useEffect(() => {
+        const updateOffset = (v) => {
+            offsetXRef.current = v;
+            forceUpdate();
+        };
         const pointerMove = (e) => {
-            diffX.current = e.clientX - x.current;
-            console.log(diffX.current);
-
-            setDiffsLatest(Object.keys(images).reduce((acc, n) => Object.assign(acc, {
-                [n]: (diffsWhenPointerDown.current[n] || 0) + diffX.current
-            }), {}));
-
+            const diffX = e.clientX - x.current;
+            x.current = e.clientX;
+            updateOffset(offsetXRef.current + diffX);
         };
         const pointerUp = () => {
-            document.documentElement.removeEventListener('pointermove', pointerMove);
-            document.documentElement.removeEventListener('pointerup', pointerUp);
-        }
-        const pointerDown = (e) => {
-            console.log('pointer down');
-            x.current = e.clientX;
-            Object.assign(diffsWhenPointerDown.current, diffsLatest.current);
-            document.documentElement.addEventListener('pointermove', pointerMove);
-            document.documentElement.addEventListener('pointerup', pointerUp);
-        };
-        document.documentElement.addEventListener('pointerdown', pointerDown);
-    }, []);
+            html.removeEventListener('pointermove', pointerMove);
+            html.removeEventListener('pointerup', pointerUp);
 
+            setAnimEnabled(true);
+            const offsetX = offsetXRef.current;
+            updateOffset(windowWidth * Math.round(offsetX / windowWidth));
+        };
+        const pointerDown = (e) => {
+            x.current = e.clientX;
+            setAnimEnabled(false);
+            html.addEventListener('pointermove', pointerMove);
+            html.addEventListener('pointerup', pointerUp);
+        };
+        html.addEventListener('pointerdown', pointerDown);
+        return () => {
+            html.removeEventListener('pointerdown', pointerDown);
+        }
+    }, [forceUpdate, windowWidth]);
+
+
+    const animClass = animEnabled ? 'anim' : '';
+    const offsetX = offsetXRef.current;
     return (
         <div className="image_viewer"
              style={{width: windowWidth, height: windowHeight}}
         >
             {
-                Object.values(images).map((img, idx) => {
-                    const diff = diffsLatest[img] || 0;
+                Object.keys(images).map((name, idx) => {
+                    const img = images[name];
                     return (
-                        <div className={`pic pic${idx}`} key={img}
+                        <div className={`pic pic${idx} ${animClass}`} key={img}
                              style={{
                                  backgroundImage: `url(${img})`,
-                                 transform: `translateX(${idx * windowWidth + diff}px)`
+                                 transform: `translateX(${idx * windowWidth + offsetX}px)`
                              }}
                         >
                         </div>
