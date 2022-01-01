@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './index.less';
 import * as images from './img';
-import useWindowSize from "../Hooks/useWindowSize";
 import useForceUpdate from "use-force-update";
 
 const html = document.documentElement;
+const windowWidth = window.innerWidth;
+const windowHeight = window.innerHeight;
 function ImageViewer() {
-    const {windowWidth, windowHeight} = useWindowSize();
     const forceUpdate = useForceUpdate();
     const x = useRef(0);
+    const t = useRef({});
     const offsetXRef = useRef(0);
     const [animEnabled, setAnimEnabled] = useState(false);
 
@@ -17,21 +18,38 @@ function ImageViewer() {
             offsetXRef.current = v;
             forceUpdate();
         };
+        const getShapeFunc = (elapsed, direction) => {
+            if (elapsed > 500) {
+                return Math.round;
+            }
+            if (direction === 'left') {
+                return Math.floor;
+            }
+            return Math.ceil;
+        };
         const pointerMove = (e) => {
             const diffX = e.clientX - x.current;
             x.current = e.clientX;
             updateOffset(offsetXRef.current + diffX);
         };
-        const pointerUp = () => {
+        const pointerUp = (e) => {
             html.removeEventListener('pointermove', pointerMove);
             html.removeEventListener('pointerup', pointerUp);
 
             setAnimEnabled(true);
             const offsetX = offsetXRef.current;
-            updateOffset(windowWidth * Math.round(offsetX / windowWidth));
+            const elapsed = Date.now() - t.current.time;
+            const direction = e.clientX < t.current.startX ? 'left' : 'right';
+            const shapeFunc = getShapeFunc(elapsed, direction);
+
+            updateOffset(windowWidth * shapeFunc(offsetX / windowWidth));
         };
         const pointerDown = (e) => {
             x.current = e.clientX;
+            t.current = {
+                time: Date.now(),
+                startX: e.clientX
+            };
             setAnimEnabled(false);
             html.addEventListener('pointermove', pointerMove);
             html.addEventListener('pointerup', pointerUp);
@@ -40,7 +58,7 @@ function ImageViewer() {
         return () => {
             html.removeEventListener('pointerdown', pointerDown);
         }
-    }, [forceUpdate, windowWidth]);
+    }, [forceUpdate]);
 
 
     const animClass = animEnabled ? 'anim' : '';
