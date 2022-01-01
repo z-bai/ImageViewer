@@ -15,11 +15,15 @@ function ImageViewer() {
 
     useEffect(() => {
         const updateOffset = (v) => {
-            offsetXRef.current = v;
+            let limitV = Math.min(0, v);
+            limitV = Math.max(
+              limitV,
+              (Object.keys(images).length-1) * windowWidth * -1);
+            offsetXRef.current = limitV;
             forceUpdate();
         };
         const getShapeFunc = (elapsed, direction) => {
-            if (elapsed > 500) {
+            if (elapsed > 300) {
                 return Math.round;
             }
             if (direction === 'left') {
