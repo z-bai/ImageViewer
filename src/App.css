@@ -4,6 +4,10 @@ html, body {
 
 }
 .App {
-  overflow: hidden;
-  background: black;
+  /*overflow: hidden;*/
+  /*background: black;*/
+  border: 1px solid black;
+}
+.highlighted {
+  color: blue;
 }
